@@ -7,7 +7,7 @@ TActiveChatConnections = Dict[int, Set[WebSocket]]
 TActiveUserConnections = Dict[int, Set[WebSocket]]
 
 
-class SocketService:
+class SocketServiceSingleton:
     def __init__(self):
         self.active_chat_connections: TActiveChatConnections = {}
         self.active_user_connections: TActiveUserConnections = {}
@@ -32,4 +32,4 @@ class SocketService:
             await websocket.send_text(message)
 
 
-socket_service: SocketService = SocketService()
+socket_service: SocketServiceSingleton = SocketServiceSingleton()
