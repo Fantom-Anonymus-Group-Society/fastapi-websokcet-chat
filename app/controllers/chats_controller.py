@@ -1,13 +1,16 @@
 import ormar
+import asyncio
 from typing import List
 from app.models.chat import Chat
 from app.models.user import User
-from app.middlewares import jwt_authentication_middleware
+from fastapi.websockets import WebSocket, WebSocketDisconnect
 from app.services.pagination_service import PaginationService
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.serializers.chats.get_chat_serializer import GetChatSerializer
 from app.serializers.users.get_user_serializer import GetUserSerializer
 from app.serializers.chats.create_chat_serializer import CreateChatSerializer
+from app.middlewares import jwt_authentication_middleware, jwt_websocket_middleware
+from app.services.singletones.socket_service_singleton import socket_service_singleton
 
 router = APIRouter(
     prefix="/api/chats",
@@ -20,7 +23,8 @@ router = APIRouter(
 async def chats_index(page: int = 1, current_user: User = Depends(jwt_authentication_middleware)) -> dict:
     chats: Chat = Chat.objects.get_chat_list(current_user)
     chats_count: int = await chats.count()
-    chats: List[Chat] = await chats.select_related(['sender', 'receiver']).order_by('-created_at').paginate(page=page).all()
+    chats: List[Chat] = await chats.select_related(['sender', 'receiver', 'messages'])\
+        .order_by('-messages__created_at').paginate(page=page).all()
 
     return {
         'chats': [GetChatSerializer(
@@ -68,7 +72,26 @@ async def chats_destroy(id: int, current_user: User = Depends(jwt_authentication
             receiver=current_user
         )
     ).get_or_none(id=id)
+
     if chat is None:
         raise HTTPException(detail='Chat is not found', status_code=status.HTTP_404_NOT_FOUND)
 
+    # await socket_service_singleton.send_message(chat)
     await chat.delete()
+
+
+@router.websocket('/')
+async def chat_list_websocket(websocket: WebSocket, current_user: User = Depends(jwt_websocket_middleware)):
+    await socket_service_singleton.connect(
+        websocket=websocket,
+        instance_id=current_user.id
+    )
+    try:
+        while True:
+            await asyncio.sleep(0.5)
+            await websocket.receive_json()
+    except WebSocketDisconnect:
+        socket_service_singleton.disconnect(
+            websocket=websocket,
+            instance_id=current_user.id
+        )

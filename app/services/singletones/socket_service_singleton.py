@@ -32,4 +32,4 @@ class SocketServiceSingleton:
             await websocket.send_text(message)
 
 
-socket_service: SocketServiceSingleton = SocketServiceSingleton()
+socket_service_singleton: SocketServiceSingleton = SocketServiceSingleton()

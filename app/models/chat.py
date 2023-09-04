@@ -56,4 +56,3 @@ class Chat(ormar.Model):
             )
         except ormar.NoMatch:
             return None
-
