@@ -11,7 +11,7 @@ class GetChatSerializer(BaseModel):
     receiver: GetUserSerializer
     last_message: GetMessageSerializer | None
     created_at: datetime
-    to_delete: None
+    to_delete: bool | None
 
     class Config:
         json_encoders = {

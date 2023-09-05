@@ -10,6 +10,7 @@ class GetMessageSerializer(BaseModel):
     chat: int
     content: str
     created_at: datetime
+    to_delete: bool | None
 
     class Config:
         json_encoders = {
