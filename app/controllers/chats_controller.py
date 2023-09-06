@@ -4,7 +4,6 @@ from typing import List
 from app.models.chat import Chat
 from app.models.user import User
 from fastapi.websockets import WebSocket, WebSocketDisconnect
-from app.services.pagination_service import PaginationService
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.serializers.chats.get_chat_serializer import GetChatSerializer
 from app.serializers.users.get_user_serializer import GetUserSerializer
@@ -20,14 +19,11 @@ router = APIRouter(
 
 
 @router.get('/')
-async def chats_index(page: int = 1, current_user: User = Depends(jwt_authentication_middleware)) -> dict:
-    chats: Chat = Chat.objects.get_chat_list(current_user)
-    chats_count: int = await chats.count()
-    chats: List[Chat] = await chats.select_related(['sender', 'receiver', 'messages'])\
-        .order_by('-messages__created_at').paginate(page=page).all()
+async def chats_index(current_user: User = Depends(jwt_authentication_middleware)) -> list:
+    chats: List[Chat] = await Chat.get_chat_list(current_user).select_related(['sender', 'receiver', 'messages'])\
+        .order_by('-messages__created_at').all()
 
-    return {
-        'chats': [GetChatSerializer(
+    return [GetChatSerializer(
             id=chat.id,
             sender=GetUserSerializer(
                 id=chat.sender.id,
@@ -45,9 +41,7 @@ async def chats_index(page: int = 1, current_user: User = Depends(jwt_authentica
             ),
             last_message=await chat.get_latest_message(),
             created_at=chat.created_at
-        ) for chat in chats],
-        'pagination': PaginationService.get_pagination_data(chats_count)
-    }
+        ) for chat in chats]
 
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=GetChatSerializer)
@@ -55,7 +49,7 @@ async def chats_store(body: CreateChatSerializer, current_user: User = Depends(j
     receiver: User = await User.objects.get_or_none(id=body.receiver_id)
     if receiver is None:
         raise HTTPException(detail='Receiver is not found', status_code=status.HTTP_404_NOT_FOUND)
-    existing_chat: Chat | None = await Chat.objects.get_if_exists(current_user, receiver)
+    existing_chat: Chat | None = await Chat.get_if_exists(current_user, receiver)
     if existing_chat is not None:
         return existing_chat
 

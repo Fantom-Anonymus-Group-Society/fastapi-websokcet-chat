@@ -2,7 +2,6 @@ import ormar
 from datetime import datetime
 from app.models.user import User
 from typing import Optional, Union
-from app.models.message import Message
 from app.core.base_meta import BaseMeta
 from app.serializers.messages.get_message_serializer import GetMessageSerializer
 from app.serializers.users.get_user_serializer import GetUserSerializer
@@ -17,21 +16,23 @@ class Chat(ormar.Model):
     receiver: Optional[Union[User, dict]] = ormar.ForeignKey(User, related_name="receiver_chats", ondelete="RESTRICT")
     created_at: datetime = ormar.DateTime(timezone=True, default=datetime.now)
 
-    def get_chat_list(self, user: User):
-        return self.filter(
+    @classmethod
+    def get_chat_list(cls, user: User):
+        return cls.objects.filter(
             ormar.or_(
                 sender=user,
                 receiver=user
             )
         )
 
-    async def get_if_exists(self, first_user: User, second_user: User):
-        return await self.filter(
+    @classmethod
+    async def get_if_exists(cls, first_user: User, second_user: User):
+        return await cls.objects.filter(
             ormar.or_(
                 sender=first_user,
                 receiver=first_user
             )
-        ).get_or_none(
+        ).select_related(['sender', 'receiver']).get_or_none(
             ormar.or_(
                 sender=second_user,
                 receiver=second_user
@@ -39,6 +40,7 @@ class Chat(ormar.Model):
         )
 
     async def get_latest_message(self) -> GetMessageSerializer | None:
+        from app.models.message import Message
         try:
             last_message = await Message.objects.filter(chat=self).select_related('user').order_by('-created_at').first()
             return GetMessageSerializer(

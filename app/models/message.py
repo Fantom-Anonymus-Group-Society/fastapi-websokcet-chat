@@ -13,6 +13,6 @@ class Message(ormar.Model):
 
     id: int = ormar.Integer(primary_key=True)
     user: Optional[Union[User, dict]] = ormar.ForeignKey(User, related_name="messages", ondelete="RESTRICT")
-    chat: Optional[Union[Chat, dict]] = ormar.ForeignKey(User, related_name="messages", ondelete="RESTRICT")
+    chat: Optional[Union[Chat, dict]] = ormar.ForeignKey(Chat, related_name="messages", ondelete="RESTRICT")
     content: str = ormar.Text(nullable=False)
     created_at: datetime = ormar.DateTime(timezone=True, default=datetime.now)

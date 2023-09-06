@@ -5,7 +5,6 @@ from app.models.chat import Chat
 from app.models.user import User
 from app.models.message import Message
 from fastapi.websockets import WebSocket, WebSocketDisconnect
-from app.services.pagination_service import PaginationService
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.serializers.chats.get_chat_serializer import GetChatSerializer
 from app.serializers.users.get_user_serializer import GetUserSerializer
@@ -22,8 +21,8 @@ router = APIRouter(
 )
 
 
-@router.get('/')
-async def messages_index(chat_id: int, page: int = 1, current_user: User = Depends(jwt_authentication_middleware)) -> dict:
+@router.get('/', response_model=List[GetMessageSerializer])
+async def messages_index(chat_id: int, current_user: User = Depends(jwt_authentication_middleware)) -> dict:
     chat: Chat = await Chat.objects.filter(
         ormar.or_(
             sender=current_user,
@@ -33,26 +32,7 @@ async def messages_index(chat_id: int, page: int = 1, current_user: User = Depen
     if chat is None:
         raise HTTPException(detail='Chat is not found', status_code=status.HTTP_404_NOT_FOUND)
 
-    messages: Message = Message.objects
-    messages_count: int = await messages.count()
-    messages: List[Message] = await messages.select_related(['user']).order_by('-created_at').paginate(page=page, page_size=50).all()
-
-    return {
-        'messages': [GetMessageSerializer(
-            id=message.id,
-            user=GetUserSerializer(
-                id=message.user.id,
-                username=message.user.username,
-                first_name=message.user.first_name,
-                last_name=message.user.last_name,
-                created_at=message.user.created_at
-            ),
-            chat=message.chat.id,
-            content=message.content,
-            created_at=message.created_at
-        ) for message in messages],
-        'pagination': PaginationService.get_pagination_data(messages_count)
-    }
+    return await Message.objects.select_related(['user']).order_by('-created_at').all()
 
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=GetMessageSerializer)

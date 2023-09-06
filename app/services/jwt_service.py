@@ -16,11 +16,8 @@ class JWTService:
         payload: dict = {
             'sub': user.id,
             'username': user.username,
-            'car_number': user.car_number,
             'first_name': user.first_name,
             'last_name': user.last_name,
-            'is_staff': user.is_staff,
-            'is_superuser': user.is_superuser,
             "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(hours=72)
         }
         payload.update(additional_payload)
