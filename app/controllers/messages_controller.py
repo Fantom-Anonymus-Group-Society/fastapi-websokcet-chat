@@ -32,12 +32,12 @@ async def messages_index(chat_id: int, current_user: User = Depends(jwt_authenti
     if chat is None:
         raise HTTPException(detail='Chat is not found', status_code=status.HTTP_404_NOT_FOUND)
 
-    return await Message.objects.select_related(['user']).order_by('-created_at').all()
+    return await Message.objects.filter(chat=chat).select_related('user').all()
 
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=GetMessageSerializer)
 async def messages_store(chat_id: int, body: CreateMessageSerializer, current_user: User = Depends(jwt_authentication_middleware)):
-    chat: Chat = await Chat.objects.get_or_none(id=chat_id)
+    chat: Chat = await Chat.objects.select_related(['sender', 'receiver']).get_or_none(id=chat_id)
     if chat is None:
         raise HTTPException(detail='Chat is not found', status_code=status.HTTP_404_NOT_FOUND)
     message: Message = await Message.objects.create(
@@ -62,9 +62,8 @@ async def messages_store(chat_id: int, body: CreateMessageSerializer, current_us
             last_name=chat.receiver.last_name,
             created_at=chat.receiver.created_at
         ),
-        last_message=None,
+        last_message=await chat.get_latest_message(),
         created_at=chat.created_at,
-        to_delete=True,
     ).json(ensure_ascii=False)
 
     sender_id: int = chat.sender.id
@@ -73,16 +72,15 @@ async def messages_store(chat_id: int, body: CreateMessageSerializer, current_us
     message_json: str = GetMessageSerializer(
         id=message.id,
         user=GetUserSerializer(
-            id=message.user.id,
-            username=message.user.username,
-            first_name=message.user.first_name,
-            last_name=message.user.last_name,
-            created_at=message.user.created_at
+            id=current_user.id,
+            username=current_user.username,
+            first_name=current_user.first_name,
+            last_name=current_user.last_name,
+            created_at=current_user.created_at
         ),
         chat=chat.id,
         content=message.content,
         created_at=message.created_at,
-        to_delete=True
     ).json(ensure_ascii=False)
 
     # update chat message list

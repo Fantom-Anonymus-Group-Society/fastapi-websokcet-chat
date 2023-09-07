@@ -3,7 +3,6 @@ from datetime import datetime
 from app.models.user import User
 from typing import Optional, Union
 from app.core.base_meta import BaseMeta
-from app.serializers.messages.get_message_serializer import GetMessageSerializer
 from app.serializers.users.get_user_serializer import GetUserSerializer
 
 
@@ -39,7 +38,8 @@ class Chat(ormar.Model):
             )
         )
 
-    async def get_latest_message(self) -> GetMessageSerializer | None:
+    async def get_latest_message(self):
+        from app.serializers.messages.get_message_serializer import GetMessageSerializer
         from app.models.message import Message
         try:
             last_message = await Message.objects.filter(chat=self).select_related('user').order_by('-created_at').first()

@@ -44,6 +44,15 @@ async def chats_index(current_user: User = Depends(jwt_authentication_middleware
         ) for chat in chats]
 
 
+@router.get('/{id}', response_model=GetChatSerializer)
+async def chats_show(id: int, current_user: User = Depends(jwt_authentication_middleware)) -> Chat:
+    chat: Chat | None = await Chat.get_chat_list(current_user).select_related(['sender', 'receiver']).get_or_none(id=id)
+    if chat is None:
+        raise HTTPException(detail='Chat is not found', status_code=status.HTTP_404_NOT_FOUND)
+
+    return chat
+
+
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=GetChatSerializer)
 async def chats_store(body: CreateChatSerializer, current_user: User = Depends(jwt_authentication_middleware)):
     receiver: User = await User.objects.get_or_none(id=body.receiver_id)
