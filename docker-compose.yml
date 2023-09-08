@@ -2,7 +2,7 @@ version: '3'
 
 services:
   web:
-    container_name: firefighters_python_container
+    container_name: chat_python_container
     build:
       context: .
     command: uvicorn app.main:app --host 0.0.0.0 --reload
@@ -15,7 +15,7 @@ services:
     depends_on:
       - db
   db:
-    container_name: firefighters_db_container
+    container_name: chat_db_container
     image: postgres:15.0-alpine
     ports:
       - "5432:5432"
